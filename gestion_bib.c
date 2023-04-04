@@ -1,4 +1,5 @@
 #define MAX_LEN 50
+#define SIZE 16
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -8,62 +9,75 @@
 typedef struct libro{
     char* titulo;
     char* autor;
-    unsigned int* stock;
-    unsigned int* borrowed;
+    int* stock;
+    int* borrowed;
 } libro;
 libro* bib = NULL;
+
 char* leer_cadena(char* mensaje) {
-    char buffer[MAX_LEN];
-    char* chain = calloc(1,sizeof(char));
-    char c; int i = 0;
+    char* chain = NULL;
+    char c; 
+    int i;
     printf("%s",mensaje);
-    while(c = getchar() != '\n'){
-        chain[i] = c;
-        chain = realloc(chain,sizeof(char) + 1);
-        i ++;
+    while(chain == NULL) {
+        i = 0;
+        chain = calloc(1,sizeof(char) * SIZE);
+        while(1){
+            if( i >= SIZE) chain = realloc(chain,sizeof(char) * ( i + SIZE ));
+            chain[i] = (c = getchar());
+            if(i == 0 && chain[0] == '\n'){
+                printf("Error: Debe ingrsar algun dato: ");
+                free(chain);
+                chain = NULL;
+                break;
+            }
+            chain[i] = toupper(chain[i]);
+            if(chain[i] == 32) chain[i] = 95;
+            if(c == '\n') {
+                chain[i] = '\0';
+                i++;
+                break;
+            }
+            i ++;
+        }
     }
-    // Eliminar el espacio en blanco y caracter de nueva línea del final de la cadena leída
-    for(int i = 0; i <= strlen(buffer); i ++){
-        if(buffer[i] == 32) buffer[i] = 95;
-        else if(buffer[i] == '\n') buffer[i] = '\0';
-    }
-
-    // Asignar memoria para la cadena
-    chain = malloc((strlen(buffer) + 1) * sizeof(char));
-
-    // Copiar la cadena leída al puntero asignado
-    strcpy(chain, buffer);
-    //Convertir la cadena a MAYUSC
-    for(int i = 0; chain[i] != '\0'; ++ i){
-        chain[i] = toupper(chain[i]);
-    }
-    // Limpiar el buffer
-    fflush(stdin);  
-    
+    chain = realloc(chain,sizeof(char) * (i + 1));
     return chain;
 }
-unsigned int* leerNum(char* mensaje){
+int* leerNum(char* mensaje) {
     /* 
     Name: leerNum
-    Return: int
+    Return: int*
     */
-   unsigned int* num = NULL;
-    while(num == NULL) {
-        num = malloc(sizeof(unsigned int));
-        printf("%s",mensaje);
-        if(scanf("%u",num) != 1){
-            printf("Error. Ingrese un valor >= 0.\n");
-            free(num);
-            num = NULL;
+    int* num = malloc(sizeof(int));
+    char* input = NULL;
+    while (1) {
+        input = leer_cadena(mensaje);
+        int i = 0;
+        while (input[i] != '\0') {
+            if (!isdigit(input[i])) {
+                printf("Error: Debe ingresar un numero entero.\n");
+                free(input);
+                break;
+            }
+            if(i >= 9){
+                printf("Error: Intente nuevamente.\n");
+                free(input);
+                break;
+            }
+            i++;
         }
-        fflush(stdin);
+        if (input[i] == '\0') {
+            *num = atoi(input);
+            break;
+        }
     }
     return num;
 }
 void agregar_libro(int* contador){
     libro* aux = calloc(1,sizeof(libro));
     FILE* dataBase = fopen("DataBase.txt","a");
-    //system("clear");
+    system("cls");
     printf("\tADD BOOK MANAGER\n");
     aux->titulo = leer_cadena("Registre el titulo del libro: ");
     aux->autor = leer_cadena("Registre el nombre del autor: "); ; 
@@ -101,8 +115,8 @@ void leerDataBase(int* contador){
         aux = calloc(1,sizeof(libro));
         aux->titulo = calloc(MAX_LEN,sizeof(char));
         aux->autor = calloc(MAX_LEN,sizeof(char));
-        aux->stock = malloc(sizeof(unsigned int));
-        aux->borrowed = malloc(sizeof(unsigned int));
+        aux->stock = malloc(sizeof( int));
+        aux->borrowed = malloc(sizeof( int));
 
         if(fscanf(dataBase, "%s %s %d %d", aux->titulo, aux->autor, aux->stock, aux->borrowed) == 4){
             bib = realloc(bib, sizeof(libro)*(*contador + 1));
