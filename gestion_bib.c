@@ -1,5 +1,5 @@
-#define MAX_LEN 50
-#define SIZE 16
+#define MAX_LEN 60
+#define INI_SIZE 10
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -14,19 +14,30 @@ typedef struct libro{
 } libro;
 libro* bib = NULL;
 
-char* leer_cadena(char* mensaje) {
+char* leerCadena(char* mensaje) {
     char* chain = NULL;
     char c; 
-    int i;
-    printf("%s",mensaje);
+    int i, size;
+    
     while(chain == NULL) {
         i = 0;
-        chain = calloc(1,sizeof(char) * SIZE);
+        size = INI_SIZE;
+        chain = calloc(1,sizeof(char) * size);
+        printf("%s",mensaje);
         while(1){
-            if( i >= SIZE) chain = realloc(chain,sizeof(char) * ( i + SIZE ));
+            if( i == size - 1) {
+                size += INI_SIZE;
+                chain = realloc(chain,sizeof(char) * ( size));
+            }
+            if(i == MAX_LEN) {
+                printf("Error: longitud maxima superada.\n");
+                free(chain);
+                chain = NULL;
+                break;
+            }
             chain[i] = (c = getchar());
-            if(i == 0 && chain[0] == '\n'){
-                printf("Error: Debe ingrsar algun dato: ");
+            if(i == 0 && (chain[0] == '\n' || chain[0] == 9 || chain[0] == 32)){
+                printf("Error: No ingrese espacios en blanco al inicio de la cadena.\n");
                 free(chain);
                 chain = NULL;
                 break;
@@ -52,7 +63,7 @@ int* leerNum(char* mensaje) {
     int* num = malloc(sizeof(int));
     char* input = NULL;
     while (1) {
-        input = leer_cadena(mensaje);
+        input = leerCadena(mensaje);
         int i = 0;
         while (input[i] != '\0') {
             if (!isdigit(input[i])) {
@@ -74,30 +85,8 @@ int* leerNum(char* mensaje) {
     }
     return num;
 }
-void agregar_libro(int* contador){
-    libro* aux = calloc(1,sizeof(libro));
-    FILE* dataBase = fopen("DataBase.txt","a");
-    system("cls");
-    printf("\tADD BOOK MANAGER\n");
-    aux->titulo = leer_cadena("Registre el titulo del libro: ");
-    aux->autor = leer_cadena("Registre el nombre del autor: "); ; 
-    aux->stock = leerNum("Ingrese la cantidad en stock: ");
-    aux->borrowed = leerNum("Registre la cantidad de libros prestados: ");
-
-    if(bib != NULL) fputc('\n',dataBase);
-    fprintf(dataBase,"%s %s %d %d",aux->titulo, aux->autor, *aux->stock, *aux->borrowed);
-    bib = realloc(bib, sizeof(libro)*(*contador + 1));  
-    bib[*contador] = *aux;
-    (*contador) ++;
-    fclose(dataBase);
-    char* rep = leer_cadena("Desea registrar otro libro: Escriba 'Si' para continuar, 'No' para regresar al menu:\t");
-    if(strcmp(rep,"SI") == 0) agregar_libro(contador);
-    free(rep);
-    return;
-}
-int findBook(int contador){
+int findBook(int contador, char* titulo){
     int i;
-    char* titulo = leer_cadena("Igrese el titulo del libro buscado: ");
 
     for(i = 0; i < contador; i ++){
         if(strcmp(titulo, bib[i].titulo) == 0){
@@ -105,30 +94,51 @@ int findBook(int contador){
             return i;
         }
     }
-    free(titulo);
     return -1;
 }
+void agregarLibro(int* contador){
+    FILE* dataBase = fopen("DataBase.txt","a");
+    if(bib != NULL) fputc('\n',dataBase);
+    system("cls");
+    printf("\tADD BOOK MANAGER\n");
+    char* titulo = leerCadena("Registre el titulo del libro: ");;
+    if(findBook(*contador,titulo) == -1){
+        bib = realloc(bib, sizeof(libro)*(*contador + 1)); 
+        bib[*contador].titulo = titulo;
+        bib[*contador].autor = leerCadena("Registre el nombre del autor: "); ; 
+        bib[*contador].stock = leerNum("Ingrese la cantidad en stock: ");
+        bib[*contador].borrowed = leerNum("Registre la cantidad de libros prestados: ");
+        fprintf(dataBase,"%s %s %d %d",bib[*contador].titulo, bib[*contador].autor, *bib[*contador].stock, *bib[*contador].borrowed);
+        (*contador) ++;
+    }
+    else printf("El libro ya se encuentra registrado.\n");
+    fclose(dataBase);
+    char* rep = leerCadena("Desea registrar otro libro: Escriba 'Si' para continuar, 'No' para regresar al menu:\t");
+    if(strcmp(rep,"SI") == 0) agregarLibro(contador);
+    free(rep);
+    return;
+}
 void leerDataBase(int* contador){
-    libro* aux;
     FILE* dataBase = fopen("DataBase.txt","r");
+    int size = INI_SIZE;
+    bib = calloc(size,sizeof(libro));
     while (!feof(dataBase)){
-        aux = calloc(1,sizeof(libro));
-        aux->titulo = calloc(MAX_LEN,sizeof(char));
-        aux->autor = calloc(MAX_LEN,sizeof(char));
-        aux->stock = malloc(sizeof( int));
-        aux->borrowed = malloc(sizeof( int));
+        if(*contador == size){size += INI_SIZE; bib = realloc(bib,sizeof(libro) * size);}
+        bib[*contador].titulo = calloc(MAX_LEN,sizeof(char));
+        bib[*contador].autor = calloc(MAX_LEN,sizeof(char));
+        bib[*contador].stock = malloc(sizeof( int));
+        bib[*contador].borrowed = malloc(sizeof( int));
 
-        if(fscanf(dataBase, "%s %s %d %d", aux->titulo, aux->autor, aux->stock, aux->borrowed) == 4){
-            bib = realloc(bib, sizeof(libro)*(*contador + 1));
-            aux->titulo = realloc(aux->titulo,strlen(aux->titulo) + 1);
-            aux->autor = realloc(aux->autor,strlen(aux->autor) + 1);
-            bib[*contador] = *aux;
+        if(fscanf(dataBase, "%s %s %d %d", bib[*contador].titulo, bib[*contador].autor, bib[*contador].stock, bib[*contador].borrowed) == 4){
+            
+            bib[*contador].titulo = realloc(bib[*contador].titulo,strlen(bib[*contador].titulo) + 1);
+            bib[*contador].autor = realloc(bib[*contador].autor,strlen(bib[*contador].autor) + 1);
             (*contador) ++;
         }
-        else{
-            free(aux->titulo); free(aux->autor); free(aux->stock); free(aux->borrowed); free(aux);
-        }
-    };
+        else {free(bib[*contador].titulo); free(bib[*contador].autor); free(bib[*contador].stock); free(bib[*contador].borrowed);}
+    }
+    if(*contador == 0) { free(bib); bib = NULL;}
+    else bib = realloc(bib, sizeof(libro) * (*contador));
     fclose(dataBase);
     return;
 }
@@ -136,11 +146,6 @@ void leerDataBase(int* contador){
 int main(){
     int count =0; 
     leerDataBase(&count);
-    //printf("%d",*bib[count-1].stock);
-    agregar_libro(&count);
-    printf("%d\n", count);
-    //findBook(count) >= 0 ? printf("Libro encontrado\n") : printf(" Libro no encontrado\n");
-    printf("%s\n",bib[count - 1].autor);
     free(bib);
     return 0;
 }
