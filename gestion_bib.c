@@ -1,5 +1,5 @@
 #define MAX_LEN 60
-#define INI_SIZE 10
+#define INI_SIZE 15
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -13,7 +13,11 @@ typedef struct libro{
     int* borrowed;
 } libro;
 libro* bib = NULL;
-
+typedef struct{
+    char* name;
+    char** titulos;
+    int numLibros;
+} clients;
 char* leerCadena(char* mensaje) {
     char* chain = NULL;
     char c; 
@@ -85,16 +89,41 @@ int* leerNum(char* mensaje) {
     }
     return num;
 }
+void printBook(int index){
+    char* tituloImprimir = strdup(bib[index].titulo);
+    for (int i = 0; i < strlen(tituloImprimir); i++){
+        if(tituloImprimir[i] == 95) tituloImprimir[i] = 32;
+    }
+    char* autorImprimir = strdup(bib[index].autor);
+    for (int i = 0; i < strlen(autorImprimir); i++){
+        if(autorImprimir[i] == 95) autorImprimir[i] = 32;
+    }
+    system("cls");
+    printf("Titulo: %s\n",tituloImprimir);
+    printf("Autor: %s\n",autorImprimir);
+    printf("Stock: %d\n",*bib[index].stock);
+    printf("Prestamos: %d\n",*bib[index].borrowed);
+    free(tituloImprimir); free(autorImprimir);
+}
 int findBook(int contador, char* titulo){
-    int i;
-
-    for(i = 0; i < contador; i ++){
+    for(int i = 0; i < contador; i ++){
         if(strcmp(titulo, bib[i].titulo) == 0){
+            printBook(i);
             free(titulo);
             return i;
         }
     }
-    return -1;
+    printf("El titulo no se encuentra en la base de datos.\n"); free(titulo); return -1;
+}
+void updateDataBase(int contador){
+    FILE* aux = fopen("auxiliar.txt", "w");
+    for(int i = 0; i < contador; i++){
+        fprintf(aux,"%s %s %d %d",bib[i].titulo, bib[i].autor, *bib[i].stock, *bib[i].borrowed);
+        if(i + 1 != contador) fputc('\n', aux); 
+    }
+    fclose(aux);
+    remove("DataBase.txt");
+    rename("auxiliar.txt","DataBase.txt");
 }
 void agregarLibro(int* contador){
     FILE* dataBase = fopen("DataBase.txt","a");
@@ -142,10 +171,32 @@ void leerDataBase(int* contador){
     fclose(dataBase);
     return;
 }
-
+void eliminarlibro(int* contador){
+    if(contador == 0) {printf("La base de datos esta vacia.\n"); return;}
+    int indice;
+    char* titulo = leerCadena("Ingrese el titulo del libro a eliminar: ");
+    char* input;
+    if((indice = findBook(*contador,titulo)) < 0) return;
+    else if(strcmp((input = leerCadena("Estas seguro que quieres elminar este libro? Escribe (Si) para confirmar, (No) para cancelar: ")),"SI") == 0){
+        (*contador) --;
+        free(bib[indice].titulo);
+        free(bib[indice].autor);
+        free(bib[indice].stock);
+        free(bib[indice].borrowed);
+        for(int i = indice; i < *contador; i++) {
+            bib[i] = bib[i + 1];
+        }
+        bib = realloc(bib, sizeof(libro) * (*contador));
+        updateDataBase(*contador);
+    }
+    free(input);
+    return;
+}
 int main(){
     int count =0; 
     leerDataBase(&count);
+    eliminarlibro(&count);
+    printf("%d\n",count);
     free(bib);
     return 0;
 }
