@@ -201,6 +201,43 @@ void eliminarlibro(int* contador){
     free(input);
     free(titulo);
     return;
+void prestarLibro(int contador){
+    if(bib == NULL) {printf("La base de datos esta vacia.\n"); return;}
+
+    char* titulo = leerCadena("Ingrese el nombre del libro que desea prestar: ");
+    int index = findBook(contador, titulo);
+
+    if(index == -1) {
+        printf("El libro no se encuentra en la base de datos.\n");
+        return;
+    }
+
+    if(*bib[index].stock > 0){
+        (*bib[index].stock)--;
+        (*bib[index].borrowed)++;
+
+        printf("El libro %s ha sido prestado exitosamente.\n", titulo);
+
+        // Registro de préstamo para el usuario
+        usuario* resguardos = realloc(bib[index].resguardos, sizeof(usuario)*((*bib[index].borrowed)));
+        if (resguardos == NULL) {
+            printf("No se pudo asignar memoria para el registro de préstamo.\n");
+            return;
+        }
+        bib[index].resguardos = resguardos;
+
+        usuario u;
+        u.nombre = strdup(leerCadena("Ingrese su nombre: "));
+        u.telefono = leerNum("Ingrese su numero de telefono: ");
+        u.resguardos = &bib[index];
+
+        bib[index].resguardos[*bib[index].borrowed - 1] = u;
+    } else {
+        printf("Lo siento, el libro %s no se encuentra disponible para prestamo.\n", titulo);
+    }
+
+    updateDataBase(contador);
+}
 }
 int main(){
     int count =0; 
